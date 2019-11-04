@@ -49,7 +49,7 @@ else
 fi
 
 if [ "$CURRENT_VERSION" = "$CHROMIUM_VERSION" ]; then
-    info Chrome is up to date
+    info Chromium is up to date
     exit 0
 fi
 
