@@ -1,20 +1,20 @@
 #!/bin/sh
 
 fail() {
-    >&2 echo "$@"
+    >&2 echo '[Failure]' "$@"
     exit 1
 }
 
 warn() {
-    >&2 echo "$@"
+    >&2 echo '[Warning]' "$@"
 }
 
 info() {
-    echo "$@"
+    echo '[Info]' "$@"
 }
 
 if [ "$(id -u)" -ne 0 ]; then
-    fail Error: Run this as root
+    fail This must be run as root
 fi
 
 # Download Debian security update package list
@@ -58,27 +58,34 @@ CHROMIUM_URL="$DEBIAN_SECURITY_PREFIX""$CHROMIUM_PATH"
 CHROMIUM_COMMON_PATH="$(echo "$CHROMIUM_COMMON" | grep 'Filename:' | awk -F: '{print $2}' | xargs)"
 CHROMIUM_COMMON_URL="$DEBIAN_SECURITY_PREFIX""$CHROMIUM_COMMON_PATH"
 
-info Downloading Chromium and Chromium common version "$CHROMIUM_VERSION"
+info Downloading Chromium "$CHROMIUM_VERSION"
 
-curl -Lso /tmp/chromium-"$CHROMIUM_VERSION".deb "$CHROMIUM_URL"
-curl -Lso /tmp/chromium-common-"$CHROMIUM_VERSION"-common.deb "$CHROMIUM_COMMON_URL"
+curl -Lso /tmp/chromium-"$CHROMIUM_VERSION".deb "$CHROMIUM_URL" || fail Could not download Chromium package
+curl -Lso /tmp/chromium-common-"$CHROMIUM_VERSION".deb "$CHROMIUM_COMMON_URL" || fail Could not download Chromium Common package
+
+PATCH_FILE=/tmp/status-chromium-"$CHROMIUM_VERSION".patch
+BACKUP_FILE=/tmp/status-backup-chromium-"$CHROMIUM_VERSION"
+RESTORE_FILE=/tmp/status-restore-chromium-"$CHROMIUM_VERSION"
+DPKG_STATUS_FILE=/var/lib/dpkg/status
 
 info Backing up dpkg status
-if [ -f /tmp/status-"$CHROMIUM_VERSION".patch ]; then
-    rm /tmp/status-"$CHROMIUM_VERSION".patch
+if [ -f "$PATCH_FILE" ]; then
+    rm "$PATCH_FILE" || warn Could not delete old patch file
 fi
 
-# Backup dpkg status
-cp /var/lib/dpkg/status /tmp/status-"$CHROMIUM_VERSION" || fail Could not back up original dpkg status
+# Backup original dpkg status (we'll restore this one later)
+cp "$DPKG_STATUS_FILE" "$RESTORE_FILE" || fail Could not back up original dpkg status
 
-info Installing chromium and chromium common version "$CHROMIUM_VERSION"
-dpkg -i /tmp/chromium-"$CHROMIUM_VERSION".deb /tmp/chromium-common-"$CHROMIUM_VERSION"-common.deb >/dev/null 2>&1 || fail Could not install packages
+info Installing Chromium "$CHROMIUM_VERSION"
+dpkg -i /tmp/chromium-"$CHROMIUM_VERSION".deb /tmp/chromium-common-"$CHROMIUM_VERSION".deb >/dev/null 2>&1 || fail Could not install packages
 
-info Removing Chromium from dpkg registry
-# Remove the record from the debian package manager status
-cp /var/lib/dpkg/status /var/lib/dpkg/status-chromium-"$CHROMIUM_VERSION" >/dev/null 2>&1 || fail Could not backup dpkg status
-diff -u /var/lib/dpkg/status /tmp/status-"$CHROMIUM_VERSION" | tee /tmp/status-"$CHROMIUM_VERSION".patch > /dev/null 2>&1 || fail Could not create dpkg status patch
-patch -d/ -p0 -i /tmp/status.patch >/dev/null 2>&1 || fail Could not patch dpkg status
+info Removing Chromium from dpkg status registry
+# Backup the new status file in case it goes wrong - this is for manual repair
+cp "$DPKG_STATUS_FILE" "$BACKUP_FILE" >/dev/null 2>&1 || fail Could not backup dpkg status
+# Take a diff of the new status and the original (restore) file without chromium insalled
+diff -u "$DPKG_STATUS_FILE" "$RESTORE_FILE" | tee "$PATCH_FILE" > /dev/null 2>&1 || fail Could not create dpkg status patch
+
+patch -d/ -Np0 -i "$PATCH_FILE" "$DPKG_STATUS_FILE" >/dev/null || fail Could not patch dpkg status
 
 info Saving chromium version
 # Save the new version
