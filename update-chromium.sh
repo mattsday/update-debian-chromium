@@ -17,6 +17,13 @@ if [ "$(id -u)" -ne 0 ]; then
     fail This must be run as root
 fi
 
+FORCE=0
+if [ -n "$1" ]; then
+    FORCE=1
+    warn "Ignoring version check and forcing reinstallation"
+fi
+
+
 # Download Debian security update package list
 PACKAGES="$(curl -s 'http://security-cdn.debian.org/debian-security/dists/buster/updates/main/binary-amd64/Packages.xz' | unxz -c)"
 
@@ -48,7 +55,7 @@ else
     CURRENT_VERSION=0
 fi
 
-if [ "$CURRENT_VERSION" = "$CHROMIUM_VERSION" ]; then
+if [ "$FORCE" == 0 ] && [ "$CURRENT_VERSION" = "$CHROMIUM_VERSION" ]; then
     info Chromium is up to date
     exit 0
 fi
