@@ -55,7 +55,7 @@ else
     CURRENT_VERSION=0
 fi
 
-if [ "$FORCE" == 0 ] && [ "$CURRENT_VERSION" = "$CHROMIUM_VERSION" ]; then
+if [ "$FORCE" = 0 ] && [ "$CURRENT_VERSION" = "$CHROMIUM_VERSION" ]; then
     info Chromium is up to date
     exit 0
 fi
