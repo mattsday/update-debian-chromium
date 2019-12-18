@@ -13,7 +13,30 @@ info() {
     echo '[Info]' "$@"
 }
 
+check_cmd() {
+    if ! command -v "$@" >/dev/null 2>&1; then fail "Command '$@' missing - do you need to install it?"; fi
+}
+
+check_cmd apt
+check_cmd diff
+check_cmd curl
+check_cmd sed
+check_cmd awk
+check_cmd grep
+check_cmd tee
+check_cmd dpkg
+check_cmd patch
+
+
 if [ "$(id -u)" -ne 0 ]; then
+    if command -v sudo >/dev/null 2>&1; then
+        warn This must be run as root - attempting to use sudo
+        if ! sudo "$0" "$@"; then
+            fail This must be run as root - e.g. "'sudo $0'"
+        fi
+        # Was successful as sudo so just exit
+        exit
+    fi
     fail This must be run as root
 fi
 
@@ -22,7 +45,6 @@ if [ -n "$1" ]; then
     FORCE=1
     warn "Ignoring version check and forcing reinstallation"
 fi
-
 
 # Download Debian security update package list
 PACKAGES="$(curl -s 'http://security-cdn.debian.org/debian-security/dists/buster/updates/main/binary-amd64/Packages.xz' | unxz -c)"
