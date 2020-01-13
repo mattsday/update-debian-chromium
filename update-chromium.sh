@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 fail() {
     >&2 echo '[Failure]' "$@"
@@ -13,8 +13,36 @@ info() {
     echo '[Info]' "$@"
 }
 
+get_version() {
+    SEARCH="$1"
+    PACKAGE="$(echo "$PACKAGES" | sed -n '/Package: '"$SEARCH"'$/,/^$/p')"
+    VERSION="$(echo "$PACKAGE" | grep 'Version:' | awk -F: '{print $2}' | xargs)"
+    FILENAME="$(echo "$PACKAGE" | grep 'Filename:' | awk -F: '{print $2}' | xargs)"
+}
+
+check_version_match() {
+    if [ "$1" != "$2" ]; then
+        fail Version mismatch between "$1" and "$2"
+    fi
+}
+
+download() {
+    URL="$DEBIAN_SECURITY_PREFIX""$1"
+    curl -Lso /tmp/"$2"-"$CHROMIUM_VERSION".deb "$URL" || fail Could not download "$2" package
+}
+
+install_chromium() {
+    for i in "${@}"; do
+        ARGS+=(/tmp/"$i"-"$CHROMIUM_VERSION".deb)
+        INSTALL_PACKAGES+=("$i")
+    done
+    info Installing packages "${INSTALL_PACKAGES[@]}"
+    dpkg -i "${ARGS[@]}" >/dev/null || fail Could not install packages
+}
+
+
 check_cmd() {
-    if ! command -v "$@" >/dev/null 2>&1; then fail "Command '$@' missing - do you need to install it?"; fi
+    if ! command -v "$@" >/dev/null 2>&1; then fail "Command '${*}' missing - do you need to install it?"; fi
 }
 
 check_cmd apt
@@ -53,16 +81,30 @@ INSTALLED_VER_FILE="$HOME/.chromium-version"
 
 DEBIAN_SECURITY_PREFIX=http://security.debian.org/debian-security/
 
-# Find version for chromium and chromium-common
-CHROMIUM="$(echo "$PACKAGES" | sed -n '/Package: chromium$/,/^$/p')"
-CHROMIUM_VERSION="$(echo "$CHROMIUM" | grep 'Version:' | awk -F: '{print $2}' | xargs)"
+get_version chromium
+CHROMIUM_VERSION="$VERSION"
+CHROMIUM_PATH="$FILENAME"
 
-CHROMIUM_COMMON="$(echo "$PACKAGES" | sed -n '/Package: chromium-common$/,/^$/p')"
-CHROMIUM_COMMON_VERSION="$(echo "$CHROMIUM_COMMON" | grep 'Version:' | awk -F: '{print $2}' | xargs)"
+get_version chromium-common
+CHROMIUM_COMMON_VERSION="$VERSION"
+CHROMIUM_COMMON_PATH="$FILENAME"
 
-if [ "$CHROMIUM_VERSION" != "$CHROMIUM_COMMON_VERSION" ]; then
-    fail "Version mismatch between chromium ($CHROMIUM_VERSION) and chromium-common ($CHROMIUM_COMMON_VERSION)"
-fi
+get_version chromium-sandbox
+CHROMIUM_SANDBOX_VERSION="$VERSION"
+CHROMIUM_SANDBOX_PATH="$FILENAME"
+
+get_version chromium-l10n
+CHROMIUM_L10N_VERSION="$VERSION"
+CHROMIUM_L10N_PATH="$FILENAME"
+
+get_version chromium-driver
+CHROMIUM_DRIVER_VERSION="$VERSION"
+CHROMIUM_DRIVER_PATH="$FILENAME"
+
+check_version_match "$CHROMIUM_VERSION" "$CHROMIUM_COMMON_VERSION"
+check_version_match "$CHROMIUM_VERSION" "$CHROMIUM_SANDBOX_VERSION"
+check_version_match "$CHROMIUM_VERSION" "$CHROMIUM_L10N_VERSION"
+check_version_match "$CHROMIUM_VERSION" "$CHROMIUM_DRIVER_VERSION"
 
 info Latest version of Chromium: "$CHROMIUM_VERSION"
 
@@ -82,15 +124,14 @@ if [ "$FORCE" = 0 ] && [ "$CURRENT_VERSION" = "$CHROMIUM_VERSION" ]; then
     exit 0
 fi
 
-CHROMIUM_PATH="$(echo "$CHROMIUM" | grep 'Filename:' | awk -F: '{print $2}' | xargs)"
-CHROMIUM_URL="$DEBIAN_SECURITY_PREFIX""$CHROMIUM_PATH"
-CHROMIUM_COMMON_PATH="$(echo "$CHROMIUM_COMMON" | grep 'Filename:' | awk -F: '{print $2}' | xargs)"
-CHROMIUM_COMMON_URL="$DEBIAN_SECURITY_PREFIX""$CHROMIUM_COMMON_PATH"
-
 info Downloading Chromium "$CHROMIUM_VERSION"
 
-curl -Lso /tmp/chromium-"$CHROMIUM_VERSION".deb "$CHROMIUM_URL" || fail Could not download Chromium package
-curl -Lso /tmp/chromium-common-"$CHROMIUM_VERSION".deb "$CHROMIUM_COMMON_URL" || fail Could not download Chromium Common package
+download "$CHROMIUM_PATH" chromium
+download "$CHROMIUM_COMMON_PATH" chromium-common
+download "$CHROMIUM_SANDBOX_PATH" chromium-sandbox
+download "$CHROMIUM_L10N_PATH" chromium-l10n
+download "$CHROMIUM_DRIVER_PATH" chromium-driver
+
 
 PATCH_FILE=/tmp/status-chromium-"$CHROMIUM_VERSION".patch
 BACKUP_FILE=/tmp/status-backup-chromium-"$CHROMIUM_VERSION"
@@ -106,7 +147,8 @@ fi
 cp "$DPKG_STATUS_FILE" "$RESTORE_FILE" || fail Could not back up original dpkg status
 
 info Installing Chromium "$CHROMIUM_VERSION"
-dpkg -i /tmp/chromium-"$CHROMIUM_VERSION".deb /tmp/chromium-common-"$CHROMIUM_VERSION".deb >/dev/null 2>&1 || fail Could not install packages
+
+install_chromium chromium chromium-common chromium-sandbox chromium-l10n chromium-driver
 
 info Removing Chromium from dpkg status registry
 # Backup the new status file in case it goes wrong - this is for manual repair
