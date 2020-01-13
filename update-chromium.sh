@@ -45,7 +45,6 @@ check_cmd() {
     if ! command -v "$@" >/dev/null 2>&1; then fail "Command '${*}' missing - do you need to install it?"; fi
 }
 
-check_cmd apt
 check_cmd diff
 check_cmd curl
 check_cmd sed
