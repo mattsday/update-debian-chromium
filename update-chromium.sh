@@ -28,6 +28,7 @@ check_version_match() {
 
 download() {
     URL="$DEBIAN_SECURITY_PREFIX""$1"
+    info Downloading package "$2"
     curl -Lso /tmp/"$2"-"$CHROMIUM_VERSION".deb "$URL" || fail Could not download "$2" package
 }
 
@@ -122,8 +123,6 @@ if [ "$FORCE" = 0 ] && [ "$CURRENT_VERSION" = "$CHROMIUM_VERSION" ]; then
     info Chromium is up to date
     exit 0
 fi
-
-info Downloading Chromium "$CHROMIUM_VERSION"
 
 download "$CHROMIUM_PATH" chromium
 download "$CHROMIUM_COMMON_PATH" chromium-common

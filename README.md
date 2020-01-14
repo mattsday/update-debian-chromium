@@ -8,12 +8,28 @@ In any case, this checks the Debian security repo for new Chromium fixes, downlo
 
 It's shady, it's hacky and it's effective.
 
+The script has been hacked together over time. Refactored PRs to tidy it up would be greatly appreciated (e.g. put the packages in an array and download/install them from that)
+
 ## Use
 
 Run the script as root (it needs root to install Chromium and also to modify the dpkg status)
 
 ## Problems
 
-It tries to back out if things go wrong, but ymmv. It could break your system! The dpkg status files are backed up in /var/lib/dpkg - maybe you can recover your system with those backups?
+At each stage there is a test to help ensure this script will back out if things are going wrong. That's not to say it's perfect and it could leave a trace of chromium in your dpkg status, fail to install chromium properly or break your system!
 
-It also uses /tmp and you'll find useful things there perhaps... I don't know!
+Backup files are kept, specifically:
+
+1. Your original `/var/lib/dpkg/status` file is backed up as `/tmp/status-restore-chromium-VERSION` - copying this (or diffing it) might help
+2. The patch applied is stored as `/tmp/status-chromium-VERSION.patch` and might help recover things
+3. The post-installation (including all the Chromium bits) status is backed up as `/tmp/status-backup-chromium-VERSION`
+
+If Chromium is installing OK but then disappearing from your system it likely means there's a trace of it in your dpkg status.
+
+Run this:
+
+```
+apt remove chromium chromium-sandbox chromium-l10n chromium-driver
+```
+
+Once this has complete, run your org's update application and reboot. Then try this script again.
