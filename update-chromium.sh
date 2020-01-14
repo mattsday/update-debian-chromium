@@ -106,16 +106,16 @@ check_version_match "$CHROMIUM_VERSION" "$CHROMIUM_SANDBOX_VERSION"
 check_version_match "$CHROMIUM_VERSION" "$CHROMIUM_L10N_VERSION"
 check_version_match "$CHROMIUM_VERSION" "$CHROMIUM_DRIVER_VERSION"
 
-info Latest version of Chromium: "$CHROMIUM_VERSION"
+info Latest version of Chromium"    ": "$CHROMIUM_VERSION"
 
 if [ -f "$INSTALLED_VER_FILE" ]; then
     if ! CURRENT_VERSION="$(cat "$INSTALLED_VER_FILE")"; then
         warn Could not read current version file
         CURRENT_VERSION=0
     fi
-    info Installed version of Chromium: "$CURRENT_VERSION"
+    info Installed version of Chromium : "$CURRENT_VERSION"
 else
-    info Installed version of Chromium: None
+    info Installed version of Chromium : None
     CURRENT_VERSION=0
 fi
 
