@@ -37,7 +37,7 @@ install_chromium() {
         ARGS+=(/tmp/"$i"-"$CHROMIUM_VERSION".deb)
         INSTALL_PACKAGES+=("$i")
     done
-    info Installing packages "${INSTALL_PACKAGES[@]}"
+    info Installing package "${INSTALL_PACKAGES[@]}"
     dpkg -i "${ARGS[@]}" >/dev/null || fail Could not install packages
 }
 
@@ -144,11 +144,10 @@ fi
 # Backup original dpkg status (we'll restore this one later)
 cp "$DPKG_STATUS_FILE" "$RESTORE_FILE" || fail Could not back up original dpkg status
 
-info Installing Chromium "$CHROMIUM_VERSION"
-
 install_chromium chromium chromium-common chromium-sandbox chromium-l10n chromium-driver
 
-info Removing Chromium from dpkg status registry
+info Removing packages from dpkg status registry
+
 # Backup the new status file in case it goes wrong - this is for manual repair
 cp "$DPKG_STATUS_FILE" "$BACKUP_FILE" >/dev/null 2>&1 || fail Could not backup dpkg status
 # Take a diff of the new status and the original (restore) file without chromium insalled
@@ -156,7 +155,7 @@ diff -u "$DPKG_STATUS_FILE" "$RESTORE_FILE" | tee "$PATCH_FILE" > /dev/null 2>&1
 
 patch -d/ -Np0 -i "$PATCH_FILE" "$DPKG_STATUS_FILE" >/dev/null || fail Could not patch dpkg status
 
-info Saving chromium version
+info Updating local version to "$CHROMIUM_VERSION" 
 # Save the new version
 echo "$CHROMIUM_VERSION" | tee "$INSTALLED_VER_FILE" >/dev/null 2>&1 || warn Could not save Chromium version
 info Upgrade complete
