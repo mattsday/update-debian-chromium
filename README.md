@@ -1,5 +1,7 @@
 # Chromium Updater
 
+**Deprecated: I have deprecated this project as I am able to use [snap](https://snapcraft.io/chromium) to keep a maintained and working Chromium installation on my system**
+
 This script is for lame company policies that remove Chromium from the Debian package repo and don't let you install it yourself.
 
 Maybe you don't like Firefox and use Chrome for business use (and don't want to mess around with profiles). Maybe you have other reasons.

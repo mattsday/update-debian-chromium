@@ -38,7 +38,7 @@ install_chromium() {
         INSTALL_PACKAGES+=("$i")
     done
     info Installing package "${INSTALL_PACKAGES[@]}"
-    dpkg -i "${ARGS[@]}" >/dev/null || fail Could not install packages
+    dpkg -i --ignore-depends=libevent-2.1-6,libvpx5 "${ARGS[@]}" >/dev/null || fail Could not install packages
 }
 
 
